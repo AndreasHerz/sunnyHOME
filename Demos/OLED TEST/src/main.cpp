@@ -4,8 +4,10 @@
 #include <Adafruit_SSD1306.h>
 #include "ESP8266WiFi.h"
 
-#define OLED_RESET 4
-Adafruit_SSD1306 display(OLED_RESET);
+
+//Don`t use this:
+//#define OLED_RESET 4
+Adafruit_SSD1306 display(0);
 
 #define NUMFLAKES 10
 #define XPOS 0
@@ -54,7 +56,7 @@ void setup()   {
   Serial.begin(9600);
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3C (for the 128x32)
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x32)
   // init done
 
   // Show image buffer on the display hardware.
