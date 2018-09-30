@@ -1,0 +1,6 @@
+{
+    "sketch": "gps_logger.ino",
+    "board": "arduino:avr:esplora",
+    "port": "COM8",
+    "output": "./../build"
+}
