@@ -1,5 +1,5 @@
-/*
-#include <TinyGPS++.h>
+
+//#include <TinyGPS++.h>
 /*
    This sample sketch should be the first you try out when you are testing a TinyGPS++
    (TinyGPSPlus) installation.  In normal use, you feed TinyGPS++ objects characters from
@@ -115,12 +115,51 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include "UBLOX.h"
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include "Adafruit_SSD1306.h"
+#include "ESP8266WiFi.h"
 
 // a uBlox object, which is on hardware
 // serial port 1 with a baud rate of 115200
-UBLOX gps(Serial1,115200);
+UBLOX gps(Serial1,9600);
+
+
+
+
+////////////  OLED Config  //////////////
+Adafruit_SSD1306 display(0);
+//Error Case
+#if (SSD1306_LCDHEIGHT != 64)
+#error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#endif
+
+
+
+
+////////////  Funktionen  /////////////
+void testdrawchar();
+
+
+
+
 
 void setup() {
+    //  Set Up //
+    Serial.begin(9600);
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+
+    //  Display Demo  //
+    // draw the first ~12 characters in the font
+    display.clearDisplay();
+    testdrawchar();
+    display.display();
+    delay(2000);
+    display.clearDisplay();
+
+
+
   // serial to display data
   Serial.begin(115200);
 
@@ -153,4 +192,23 @@ void loop() {
     Serial.print("\t");
     Serial.println(gps.getMSLHeight_ft());      ///< [ft], Height above mean sea level
   }
+}
+
+
+///////////  Funktionen  ///////////////
+
+
+void testdrawchar(void) {
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+
+  for (uint8_t i=0; i < 168; i++) {
+    if (i == '\n') continue;
+    display.write(i);
+    if ((i > 0) && (i % 21 == 0))
+      display.println();
+  }
+  display.display();
+  delay(1);
 }
