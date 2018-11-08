@@ -1,6 +1,6 @@
 # ESP32 GPS Thingy
 
-Quite simple ESP32 based device that allows to display basic GPS data on OLED screen and measure distance in a straight line. 
+Quite simple ESP32 based device that allows to display basic GPS data on OLED screen and measure distance in a straight line.
 
 More about this device is available [here](https://www.youtube.com/watch?v=ebBtEi8srBc). If you want to know more about ESP32, you might want to [visit my website too](https://quadmeup.com/tag/esp32/).
 
@@ -19,8 +19,8 @@ More about this device is available [here](https://www.youtube.com/watch?v=ebBtE
 
 ## OLED:
 
-* OLED SDA to pin 4
-* OLED SCL to pin 15
+* OLED SDA to pin 21
+* OLED SCL to pin 22
 
 # Dependencies
 

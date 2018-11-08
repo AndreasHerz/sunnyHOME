@@ -1,4 +1,4 @@
-#include <TinyGPS++.h>
+#include "TinyGPS++.h"
 #include <HardwareSerial.h>
 #include "EEPROM.h"
 #include "tactile.h"
@@ -41,7 +41,7 @@ template <class T> int EEPROM_readAnything(int ee, T& value);
 
 void setup() {
 
-    Serial.begin(115200);
+    Serial.begin(9600);
     SerialGPS.begin(9600, SERIAL_8N1, 16, 17);
     button0.start();
 
