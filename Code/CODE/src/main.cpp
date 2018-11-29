@@ -1,34 +1,13 @@
 #include <Arduino.h>
-/*
-Simple Deep Sleep with Timer Wake Up
-=====================================
-ESP32 offers a deep sleep mode for effective power
-saving as power is an important factor for IoT
-applications. In this mode CPUs, most of the RAM,
-and all the digital peripherals which are clocked
-from APB_CLK are powered off. The only parts of
-the chip which can still be powered on are:
-RTC controller, RTC peripherals ,and RTC memories
-
-This code displays the most basic deep sleep with
-a timer to wake it up and how to store data in
-RTC memory to use it over reboots
-
-This code is under Public Domain License.
-
-Author:
-Pranav Cherukupalli <cherukupallip@gmail.com>
-*/
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
 
 RTC_DATA_ATTR int bootCount = 0;
 
-/*
-Method to print the reason by which ESP32
-has been awaken from sleep
-*/
+
+
+// Method to print the reason by which ESP32 has been awaken from sleep
 void print_wakeup_reason(){
   esp_sleep_wakeup_cause_t wakeup_reason;
 
@@ -45,11 +24,9 @@ void print_wakeup_reason(){
   }
 }
 
+
+
 void setup(){
-
-}
-
-void loop(){
   Serial.begin(9600);
   delay(1000); //Take some time to open up the Serial Monitor
 
@@ -92,4 +69,8 @@ void loop(){
   Serial.flush();
   esp_deep_sleep_start();
   //Serial.println("This will never be printed");
+}
+
+void loop(){
+  //This is not going to be called
 }
