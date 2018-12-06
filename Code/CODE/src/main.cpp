@@ -1,14 +1,24 @@
 #include <Arduino.h>
-#include <TinyGPS++.h>
-#include "HardwareSerial.h"
+#include "TinyGPS++.h"
+#include "LM75A.h"
+#include <HardwareSerial.h>
 
 ///   Deep-Sleep Defines
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
 
 ///   GPS Globals
-//static const int RXPin = 17, TXPin = 16;
-static const uint32_t GPSBaud = 9600;
+HardwareSerial Serial_2(2);
+#define RXD2 17
+#define TXD2 16
+
+///   Temperature Sensor
+// Create I2C LM75A instance
+LM75A lm75a_sensor(false,  //A0 LM75A pin state
+                   false,  //A1 LM75A pin state
+                   false); //A2 LM75A pin state
+// Equivalent to "LM75A lm75a_sensor;"
+
 
 /// Deep-Sleep Counter
 RTC_DATA_ATTR int bootCount = 0;
@@ -32,24 +42,25 @@ void print_wakeup_reason(){
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
-// The serial connection to the GPS device
-HardwareSerial ss(RXPin, TXPin);
-
+///   GPS Functions
+static void smartDelay(unsigned long ms);
+static void printFloat(float val, bool valid, int len, int prec);
+static void printInt(unsigned long val, bool valid, int len);
+static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
+static void printStr(const char *str, int len);
 
 
 void setup(){
   Serial.begin(9600);
-  // GPS beginns
-  ss.begin(GPSBaud);
+  Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+
+  if(Serial_2.available()){
+    Serial.println("Serial Ports are on pin: "+String(TX) + " and " + String(RX));
+  }
 
   delay(1000); //Take some time to open up the Serial Monitor
 
-  Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card  Distance Course Card  Chars Sentences Checksum"));
-  Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----  ---- to London  ----  RX    RX        Fail"));
-  Serial.println(F("----------------------------------------------------------------------------------------------------------------------------------------"));
-}
 
-void loop(){
   //Increment boot number and print it every reboot
   ++bootCount;
   Serial.println("Boot number: " + String(bootCount));
@@ -65,6 +76,11 @@ void loop(){
   Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) +
   " Seconds");
 
+
+  Serial.println("\n\n");
+  Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card  Distance Course Card  Chars Sentences Checksum"));
+  Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----  ---- to London  ----  RX    RX        Fail"));
+  Serial.println(F("----------------------------------------------------------------------------------------------------------------------------------------"));
 
   ///   GPS GPS_DATA
   static const double LONDON_LAT = 51.508131, LONDON_LON = -0.128002;
@@ -106,14 +122,25 @@ void loop(){
   printInt(gps.failedChecksum(), true, 9);
   Serial.println();
 
-  smartDelay(1000);
-
   if (millis() > 5000 && gps.charsProcessed() < 10)
     Serial.println(F("No GPS data received: check wiring"));
 
+Serial.println("\n\n");
 
+  ///   Temperature Meausrement
+  float temperature_in_degrees = lm75a_sensor.getTemperatureInDegrees();
 
+  if (temperature_in_degrees == INVALID_LM75A_TEMPERATURE) {
+      Serial.println("Error while getting temperature");
+  } else {
+      Serial.print("Temperature: ");
+      Serial.print(temperature_in_degrees);
+      Serial.print(" degrees (");
+      Serial.print(LM75A::degreesToFahrenheit(temperature_in_degrees));
+      Serial.println(" Fahrenheit)");
+  }
 
+  //delay(1000);
 
 
   ///   Sleeping command
@@ -121,6 +148,9 @@ void loop(){
   Serial.flush();
   esp_deep_sleep_start();
   //Serial.println("This will never be printed");
+}
+
+void loop(){
 }
 
 
@@ -131,8 +161,8 @@ static void smartDelay(unsigned long ms)
   unsigned long start = millis();
   do
   {
-    while (ss.available())
-      gps.encode(ss.read());
+    while (Serial_2.available())
+      gps.encode(Serial_2.read());
   } while (millis() - start < ms);
 }
 
