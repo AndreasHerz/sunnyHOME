@@ -54,16 +54,17 @@ void setup(){
   Serial.begin(9600);
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
 
-  if(Serial_2.available()){
+
+/*  if(Serial_2.available()==true){
     Serial.println("Serial Ports are on pin: "+String(TX) + " and " + String(RX));
   }
-
+*/
   delay(1000); //Take some time to open up the Serial Monitor
 
 
   //Increment boot number and print it every reboot
   ++bootCount;
-  Serial.println("Boot number: " + String(bootCount));
+  Serial.println("\nBoot number: " + String(bootCount));
 
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
@@ -140,11 +141,12 @@ Serial.println("\n\n");
       Serial.println(" Fahrenheit)");
   }
 
-  //delay(1000);
-
+  delay(1000);
+  Serial.println("\n");
 
   ///   Sleeping command
   Serial.println("Going to sleep now");
+  Serial.println("\n");
   Serial.flush();
   esp_deep_sleep_start();
   //Serial.println("This will never be printed");
