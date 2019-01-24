@@ -1,90 +1,36 @@
-#include <Arduino.h>
-#include "TinyGPS++.h"
-#include "LM75A.h"
-#include <HardwareSerial.h>
-#include "DS1307.h"
-
-///   Deep-Sleep Defines
-#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
-
-///   GPS Globals
-HardwareSerial Serial_2(2);
-#define RXD2 17
-#define TXD2 16
-
-///   Temperature Sensor
-// Create I2C LM75A instance
-LM75A lm75a_sensor(false,  //A0 LM75A pin state
-                   false,  //A1 LM75A pin state
-                   false); //A2 LM75A pin state
-// Equivalent to "LM75A lm75a_sensor;"
-
-
-/// Deep-Sleep Counter
-RTC_DATA_ATTR int bootCount = 0;
-
-// Method to print the reason by which ESP32 has been awaken from sleep
-void print_wakeup_reason(){
-    esp_sleep_wakeup_cause_t wakeup_reason;
-
-    wakeup_reason = esp_sleep_get_wakeup_cause();
-
-    switch(wakeup_reason)
-    {
-        case 1  : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-        case 2  : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-        case 3  : Serial.println("Wakeup caused by timer"); break;
-        case 4  : Serial.println("Wakeup caused by touchpad"); break;
-        case 5  : Serial.println("Wakeup caused by ULP program"); break;
-        default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
-    }
-}
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+/*
+   This sample code demonstrates the normal use of a TinyGPS++ (TinyGPSPlus) object.
+   It requires the use of SoftwareSerial, and assumes that you have a
+   4800-baud serial GPS device hooked up on pins 4(rx) and 3(tx).
+*/
+static const int RXPin = 4, TXPin = 3;
+static const uint32_t GPSBaud = 4800;
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
-///   GPS Functions
-static void smartDelay(unsigned long ms);
-static void printFloat(float val, bool valid, int len, int prec);
-static void printInt(unsigned long val, bool valid, int len);
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
-static void printStr(const char *str, int len);
 
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
 
-void setup(){
-  Serial.begin(9600);
-  Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+void setup()
+{
+  Serial.begin(115200);
+  ss.begin(GPSBaud);
 
-
-/*  if(Serial_2.available()==true){
-    Serial.println("Serial Ports are on pin: "+String(TX) + " and " + String(RX));
-  }
-*/
-  delay(1000); //Take some time to open up the Serial Monitor
-
-
-  //Increment boot number and print it every reboot
-  ++bootCount;
-  Serial.println("\nBoot number: " + String(bootCount));
-
-  //Print the wakeup reason for ESP32
-  print_wakeup_reason();
-
-  /*
-  First we configure the wake up source
-  We set our ESP32 to wake up every 5 seconds
-  */
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) +
-  " Seconds");
-
-
-  Serial.println("\n\n");
+  Serial.println(F("FullExample.ino"));
+  Serial.println(F("An extensive example of many interesting TinyGPS++ features"));
+  Serial.print(F("Testing TinyGPS++ library v. ")); Serial.println(TinyGPSPlus::libraryVersion());
+  Serial.println(F("by Mikal Hart"));
+  Serial.println();
   Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card  Distance Course Card  Chars Sentences Checksum"));
   Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----  ---- to London  ----  RX    RX        Fail"));
   Serial.println(F("----------------------------------------------------------------------------------------------------------------------------------------"));
+}
 
-  ///   GPS GPS_DATA
+void loop()
+{
   static const double LONDON_LAT = 51.508131, LONDON_LON = -0.128002;
 
   printInt(gps.satellites.value(), gps.satellites.isValid(), 5);
@@ -102,7 +48,7 @@ void setup(){
     (unsigned long)TinyGPSPlus::distanceBetween(
       gps.location.lat(),
       gps.location.lng(),
-      LONDON_LAT,
+      LONDON_LAT, 
       LONDON_LON) / 1000;
   printInt(distanceKmToLondon, gps.location.isValid(), 9);
 
@@ -110,7 +56,7 @@ void setup(){
     TinyGPSPlus::courseTo(
       gps.location.lat(),
       gps.location.lng(),
-      LONDON_LAT,
+      LONDON_LAT, 
       LONDON_LON);
 
   printFloat(courseToLondon, gps.location.isValid(), 7, 2);
@@ -123,49 +69,22 @@ void setup(){
   printInt(gps.sentencesWithFix(), true, 10);
   printInt(gps.failedChecksum(), true, 9);
   Serial.println();
+  
+  smartDelay(1000);
 
-
-
-
-Serial.println("\n\n");
-
-  ///   Temperature Meausrement
-  float temperature_in_degrees = lm75a_sensor.getTemperatureInDegrees();
-
-  if (temperature_in_degrees == INVALID_LM75A_TEMPERATURE) {
-      Serial.println("Error while getting temperature");
-  } else {
-      Serial.print("Temperature: ");
-      Serial.print(temperature_in_degrees);
-      Serial.print(" degrees (");
-      Serial.print(LM75A::degreesToFahrenheit(temperature_in_degrees));
-      Serial.println(" Fahrenheit)");
-  }
-
-  delay(1000);
-  Serial.println("\n");
-
-  ///   Sleeping command
-  Serial.println("Going to sleep now");
-  Serial.println("\n");
-  Serial.flush();
-  esp_deep_sleep_start();
-  //Serial.println("This will never be printed");
+  if (millis() > 5000 && gps.charsProcessed() < 10)
+    Serial.println(F("No GPS data received: check wiring"));
 }
-
-void loop(){
-}
-
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
 static void smartDelay(unsigned long ms)
 {
   unsigned long start = millis();
-  do
+  do 
   {
-    while (Serial_2.available())
-      gps.encode(Serial_2.read());
+    while (ss.available())
+      gps.encode(ss.read());
   } while (millis() - start < ms);
 }
 
@@ -197,7 +116,7 @@ static void printInt(unsigned long val, bool valid, int len)
   sz[len] = 0;
   for (int i=strlen(sz); i<len; ++i)
     sz[i] = ' ';
-  if (len > 0)
+  if (len > 0) 
     sz[len-1] = ' ';
   Serial.print(sz);
   smartDelay(0);
@@ -215,7 +134,7 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
     sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
     Serial.print(sz);
   }
-
+  
   if (!t.isValid())
   {
     Serial.print(F("******** "));
