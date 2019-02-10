@@ -24,10 +24,10 @@ TinyGPSPlus gps;
 
 static void smartDelay(unsigned long ms);
 
-static void printFloat(float val, bool valid, int len, int prec);
+//static void printFloat(float val, bool valid, int len, int prec);
 static void printInt(unsigned long val, bool valid, int len);
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
-static void printStr(const char *str, int len);
+static void setDateTime(TinyGPSDate &d, TinyGPSTime &t);
+//static void printStr(const char *str, int len);
 
 
 void setup(){
@@ -58,36 +58,13 @@ void setup(){
   if (millis() > 5000 && gps.charsProcessed() < 10)
     Serial.println(F("No GPS data received: check wiring"));
 
-  // Struct für Zeitfunktionen
-  TinyGPSTime t;
-  //Struct für Datumsfunktionen
-  TinyGPSDate d;
 
-  while (gps.d.isValid() == false ) && (t.isValid() == false)){
+  setDateTime(gps.date, gps.time);
 
-    display.clearDisplay();
-    Serial.println("GPS-Time not available");
+  smartDelay(0);
+  display.display();
+  delay(5000);
 
-    display.setCursor(15,17);
-    display.println("no time received");
-
-    printDateTime(gps.date, gps.time);
-
-    smartDelay(0);
-    display.display();
-    delay(5000);
-
-    t=gps.time;
-    d=gps.date;
-  }
-  if ((d.isValid() == true) && (t.isValid() == true)){
-
-    ////    RTC Adjustment    ////
-    rtc.adjust(DateTime(d.year(), d.month(), d.day(), t.hour(), t.minute(), t.second()));  // Format: YYYY,MM,DD,HH,MM,SS
-
-    smartDelay(0);
-
-  }
 }
 
 void loop() {
@@ -110,7 +87,7 @@ void loop() {
 
   delay(3000); //Print date and time every 3 sec
 
-
+/*
   display.clearDisplay();
 
   printDateTime(gps.date, gps.time);
@@ -136,9 +113,9 @@ void loop() {
         display.setCursor(15,15);
         display.println(str);
       }
-
+*/
   }
-
+/*
   // Struct für Zeitfunktionen
   TinyGPSTime t;
   //Struct für Datumsfunktionen
@@ -158,7 +135,7 @@ void loop() {
     display.println(str);
   }
   //display.display();
-
+  */
 }
 
 // This custom version of delay() ensures that the gps object
@@ -195,7 +172,7 @@ static void printFloat(float val, bool valid, int len, int prec)
 }
 */
 
-/*
+
 static void printInt(unsigned long val, bool valid, int len)
 {
   char sz[32] = "*****************";
@@ -209,26 +186,37 @@ static void printInt(unsigned long val, bool valid, int len)
   Serial.print(sz);
   smartDelay(0);
 }
-*/
 
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
+
+static void setDateTime(TinyGPSDate &d, TinyGPSTime &t)
 {
-  if (!d.isValid())
+  while (!d.isValid())
   {
-    Serial.print(F("********** "));
+    display.clearDisplay();
+    Serial.println("GPS-Date not available");
+
+    display.setCursor(15,17);
+    display.println("no date received!");
+    display.display();
   }
-  else
+  if (d.isValid())
   {
     char sz[32];
     sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
+    rtc.adjust(DateTime(d.year(), d.month(), d.day(), t.hour(), t.minute(), t.second()));  // Format: YYYY,MM,DD,HH,MM,SS
     Serial.print(sz);
   }
 
-  if (!t.isValid())
+  while (!t.isValid())
   {
-    Serial.print(F("******** "));
+    display.clearDisplay();
+    Serial.println("GPS-Time not available");
+
+    display.setCursor(15,17);
+    display.println("no time received!");
+    display.display();
   }
-  else
+  if (t.isValid())
   {
     char sz[32];
     sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());

@@ -1,17 +1,47 @@
 #include <Arduino.h>
-#include "TinyGPS++.h"
-#include "LM75A.h"
 #include <HardwareSerial.h>
-#include "DS1307.h"
+//WiFi
+#include <WiFi.h>
+#include "libraries/PubSubClient.h"
+//GPS
+#include "libraries/TinyGPS++.h"
+//Sensors
+#include "libraries/LM75A.h"
+#include "libraries/DS1307.h"
+
 
 ///   Deep-Sleep Defines
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
 
+///   WiFi
+const char* ssid = "OnePlus 5";
+const char* password = "inda.net";
+const char* mqtt_server = "192.168.43.202";
+WiFiClient espClient;
+PubSubClient client(espClient);
+long lastMsg = 0;
+char msg[50];
+int value = 0;
+//  Functions
+void setup_wifi();
+void callback(char* topic, byte* message, unsigned int length);
+void reconnect();
+
+
 ///   GPS Globals
 HardwareSerial Serial_2(2);
 #define RXD2 17
 #define TXD2 16
+// The TinyGPS++ object
+TinyGPSPlus gps;
+///   GPS Functions
+static void smartDelay(unsigned long ms);
+static void printFloat(float val, bool valid, int len, int prec);
+static void printInt(unsigned long val, bool valid, int len);
+static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
+static void printStr(const char *str, int len);
+
 
 ///   Temperature Sensor
 // Create I2C LM75A instance
@@ -23,13 +53,10 @@ LM75A lm75a_sensor(false,  //A0 LM75A pin state
 
 /// Deep-Sleep Counter
 RTC_DATA_ATTR int bootCount = 0;
-
 // Method to print the reason by which ESP32 has been awaken from sleep
 void print_wakeup_reason(){
     esp_sleep_wakeup_cause_t wakeup_reason;
-
     wakeup_reason = esp_sleep_get_wakeup_cause();
-
     switch(wakeup_reason)
     {
         case 1  : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
@@ -41,93 +68,39 @@ void print_wakeup_reason(){
     }
 }
 
-// The TinyGPS++ object
-TinyGPSPlus gps;
-///   GPS Functions
-static void smartDelay(unsigned long ms);
-static void printFloat(float val, bool valid, int len, int prec);
-static void printInt(unsigned long val, bool valid, int len);
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
-static void printStr(const char *str, int len);
-
 
 void setup(){
   Serial.begin(9600);
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
 
+  //setup_wifi();
+  //client.setServer(mqtt_server, 1883);
+  //client.setCallback(callback);
 
-/*  if(Serial_2.available()==true){
-    Serial.println("Serial Ports are on pin: "+String(TX) + " and " + String(RX));
-  }
-*/
   delay(1000); //Take some time to open up the Serial Monitor
-
 
   //Increment boot number and print it every reboot
   ++bootCount;
   Serial.println("\nBoot number: " + String(bootCount));
-
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
 
-  /*
-  First we configure the wake up source
-  We set our ESP32 to wake up every 5 seconds
-  */
+  //First we configure the wake up source. We set our ESP32 to wake up every 5 seconds
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) +
-  " Seconds");
+  Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 
-
-  Serial.println("\n\n");
-  Serial.println(F("Sats HDOP  Latitude   Longitude   Fix  Date       Time     Date Alt    Course Speed Card  Distance Course Card  Chars Sentences Checksum"));
-  Serial.println(F("           (deg)      (deg)       Age                      Age  (m)    --- from GPS ----  ---- to London  ----  RX    RX        Fail"));
-  Serial.println(F("----------------------------------------------------------------------------------------------------------------------------------------"));
 
   ///   GPS GPS_DATA
-  static const double LONDON_LAT = 51.508131, LONDON_LON = -0.128002;
-
-  printInt(gps.satellites.value(), gps.satellites.isValid(), 5);
-  printFloat(gps.hdop.hdop(), gps.hdop.isValid(), 6, 1);
   printFloat(gps.location.lat(), gps.location.isValid(), 11, 6);
   printFloat(gps.location.lng(), gps.location.isValid(), 12, 6);
   printInt(gps.location.age(), gps.location.isValid(), 5);
   printDateTime(gps.date, gps.time);
-  printFloat(gps.altitude.meters(), gps.altitude.isValid(), 7, 2);
-  printFloat(gps.course.deg(), gps.course.isValid(), 7, 2);
-  printFloat(gps.speed.kmph(), gps.speed.isValid(), 6, 2);
-  printStr(gps.course.isValid() ? TinyGPSPlus::cardinal(gps.course.deg()) : "*** ", 6);
-
-  unsigned long distanceKmToLondon =
-    (unsigned long)TinyGPSPlus::distanceBetween(
-      gps.location.lat(),
-      gps.location.lng(),
-      LONDON_LAT,
-      LONDON_LON) / 1000;
-  printInt(distanceKmToLondon, gps.location.isValid(), 9);
-
-  double courseToLondon =
-    TinyGPSPlus::courseTo(
-      gps.location.lat(),
-      gps.location.lng(),
-      LONDON_LAT,
-      LONDON_LON);
-
-  printFloat(courseToLondon, gps.location.isValid(), 7, 2);
-
-  const char *cardinalToLondon = TinyGPSPlus::cardinal(courseToLondon);
-
-  printStr(gps.location.isValid() ? cardinalToLondon : "*** ", 6);
-
   printInt(gps.charsProcessed(), true, 6);
   printInt(gps.sentencesWithFix(), true, 10);
   printInt(gps.failedChecksum(), true, 9);
   Serial.println();
 
-
-
-
-Serial.println("\n\n");
+  Serial.println("\n\n");
 
   ///   Temperature Meausrement
   float temperature_in_degrees = lm75a_sensor.getTemperatureInDegrees();
@@ -142,7 +115,6 @@ Serial.println("\n\n");
       Serial.println(" Fahrenheit)");
   }
 
-  delay(1000);
   Serial.println("\n");
 
   ///   Sleeping command
@@ -150,10 +122,77 @@ Serial.println("\n\n");
   Serial.println("\n");
   Serial.flush();
   esp_deep_sleep_start();
-  //Serial.println("This will never be printed");
 }
 
 void loop(){
+}
+
+void setup_wifi() {
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void callback(char* topic, byte* message, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  String messageTemp;
+
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
+  }
+  Serial.println();
+
+  // Feel free to add more if statements to control more GPIOs with MQTT
+
+  // If a message is received on the topic esp32/output, you check if the message is either "on" or "off".
+  // Changes the output state according to the message
+  if (String(topic) == "esp32/output") {
+    Serial.print("Changing output to ");
+    if(messageTemp == "on"){
+      Serial.println("on");
+      //digitalWrite(ledPin, HIGH);
+    }
+    else if(messageTemp == "off"){
+      Serial.println("off");
+      //digitalWrite(ledPin, LOW);
+    }
+  }
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("ESP8266Client")) {
+      Serial.println("connected");
+      // Subscribe
+      client.subscribe("esp32/output");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
 }
 
 
