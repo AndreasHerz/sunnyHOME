@@ -51,7 +51,7 @@ LM75A lm75a_sensor(false,  //A0 LM75A pin state
 // Equivalent to "LM75A lm75a_sensor;"
 
 
-/// Deep-Sleep Counter
+///   Deep-Sleep Counter
 RTC_DATA_ATTR int bootCount = 0;
 // Method to print the reason by which ESP32 has been awaken from sleep
 void print_wakeup_reason(){

@@ -6,6 +6,8 @@
 #include <HardwareSerial.h>
 #include "RTClib.h"
 
+
+///   RTC-Config
 RTC_DS1307 rtc;
 char daysOfTheWeek[7][12] = {"Sunday","Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
@@ -16,27 +18,23 @@ Adafruit_SSD1306 display(2/*x3c, 21, 22*/);
 HardwareSerial SerialGPS(2);    //UART0=0, UART1=1, and UART2 =2
 #define RXD2 16
 #define TXD2 17
-
-
 // The TinyGPS++ object
 TinyGPSPlus gps;
-///   GPS Functions
-
+// GPS Functions
 static void smartDelay(unsigned long ms);
-
-//static void printFloat(float val, bool valid, int len, int prec);
+// static void printFloat(float val, bool valid, int len, int prec);
 static void printInt(unsigned long val, bool valid, int len);
 static void setDateTime(TinyGPSDate &d, TinyGPSTime &t);
-//static void printStr(const char *str, int len);
+// static void printStr(const char *str, int len);
 
 
 void setup(){
-  Serial.begin(9600);
-  Wire.begin(21,22);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  SerialGPS.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  Serial.begin(9600);                               // Begin Serial-Monitor
+  Wire.begin(21,22);                                // Important for I2C-Configuration
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);        // Display-Start
+  SerialGPS.begin(9600, SERIAL_8N1, RXD2, TXD2);    // GPS Start
 
-  // OLED Configuration
+  ////    OLED Configuration    ////
   display.setTextSize(1);
   display.setTextColor(WHITE);
 
@@ -54,21 +52,18 @@ void setup(){
     rtc.adjust(DateTime(2016, 11, 19, 19, 45, 0));   // <----------------------SET TIME AND DATE: YYYY,MM,DD,HH,MM,SS
   }
 
-
+  ////    GPS Test    ////
   if (millis() > 5000 && gps.charsProcessed() < 10)
     Serial.println(F("No GPS data received: check wiring"));
-
-
   setDateTime(gps.date, gps.time);
 
-  smartDelay(0);
-  display.display();
-  delay(5000);
-
+  smartDelay(0);        // ensures that the gps object is being "fed"
+  display.display();    // update the Display
+  delay(5000);          // 5sec Delay
 }
 
 void loop() {
-  DateTime now = rtc.now();
+  DateTime now = rtc.now();     // updating actual time "now"
   Serial.print(now.day(), DEC);
   Serial.print('/');
   Serial.print(now.month(), DEC);
@@ -84,9 +79,7 @@ void loop() {
   Serial.print(now.second(), DEC);
   Serial.println();
 
-
   delay(3000); //Print date and time every 3 sec
-
 /*
   display.clearDisplay();
 
