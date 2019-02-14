@@ -28,6 +28,8 @@ static void setDateTime(TinyGPSDate &d, TinyGPSTime &t);
 // static void printStr(const char *str, int len);
 
 
+
+
 void setup(){
   Serial.begin(9600);                               // Begin Serial-Monitor
   Wire.begin(21,22);                                // Important for I2C-Configuration
@@ -53,7 +55,7 @@ void setup(){
   }
 
   ////    GPS Test    ////
-  if (millis() > 5000 && gps.charsProcessed() < 10)
+  if ((millis() > 5000) && (gps.charsProcessed() < 10))
     Serial.println(F("No GPS data received: check wiring"));
   setDateTime(gps.date, gps.time);
 
@@ -192,7 +194,7 @@ static void setDateTime(TinyGPSDate &d, TinyGPSTime &t)
     display.println("no date received!");
     display.display();
   }
-  if (d.isValid())
+  if (d.isValid())&&(t.isValid()))
   {
     char sz[32];
     sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());

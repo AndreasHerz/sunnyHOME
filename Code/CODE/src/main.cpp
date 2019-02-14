@@ -1,5 +1,7 @@
+//Standart
 #include <Arduino.h>
 #include <HardwareSerial.h>
+#include <Wire.h>
 //WiFi
 #include <WiFi.h>
 #include "libraries/PubSubClient.h"
@@ -9,25 +11,32 @@
 #include "libraries/LM75A.h"
 #include "libraries/DS1307.h"
 
+///   WiFi Constants
+#define WIFISSID "OnePlus5" // Put your WifiSSID here
+#define PASSWORD "inda.net" // Put your wifi password here
+#define TOKEN "A1E-XiyvObDGuNpIeTXMjqlEiCFhpm6Qxi" // Put your Ubidots' TOKEN
+#define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
+
+///   labels
+#define VARIABLE_LABEL_TEMP "temperature" // Assing the variable label
+#define VARIABLE_LABEL_GPS "gps" // Assing the variable label
+#define DEVICE_LABEL "esp32" // Assig the device label
 
 ///   Deep-Sleep Defines
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
 
 ///   WiFi
-const char* ssid = "OnePlus 5";
-const char* password = "inda.net";
-const char* mqtt_server = "192.168.43.202";
-WiFiClient espClient;
-PubSubClient client(espClient);
-long lastMsg = 0;
-char msg[50];
-int value = 0;
-//  Functions
-void setup_wifi();
-void callback(char* topic, byte* message, unsigned int length);
-void reconnect();
+char mqttBroker[]  = "things.ubidots.com";
+char payload[100];
+char topic[150];
+char topicSubscribe[100];
 
+// Space to store values to send
+char str_temperature[10];
+
+WiFiClient ubidots;
+PubSubClient client(ubidots);
 
 ///   GPS Globals
 HardwareSerial Serial_2(2);
@@ -42,14 +51,11 @@ static void printInt(unsigned long val, bool valid, int len);
 static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
 static void printStr(const char *str, int len);
 
-
 ///   Temperature Sensor
 // Create I2C LM75A instance
 LM75A lm75a_sensor(false,  //A0 LM75A pin state
                    false,  //A1 LM75A pin state
                    false); //A2 LM75A pin state
-// Equivalent to "LM75A lm75a_sensor;"
-
 
 ///   Deep-Sleep Counter
 RTC_DATA_ATTR int bootCount = 0;
@@ -67,17 +73,74 @@ void print_wakeup_reason(){
         default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
     }
 }
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.println("Attempting MQTT connection...");
+
+    // Attemp to connect
+    if (client.connect(MQTT_CLIENT_NAME, TOKEN, "")) {
+      Serial.println("Connected");
+      client.subscribe(topicSubscribe);
+    } else {
+      Serial.print("Failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 2 seconds");
+      // Wait 2 seconds before retrying
+      delay(2000);
+    }
+  }
+}
+void callback(char* topic, byte* payload, unsigned int length) {
+  char p[length + 1];
+  memcpy(p, payload, length);
+  p[length] = NULL;
+  String message(p);
+  if (message == "0") {
+    digitalWrite(relay, LOW);
+  } else {
+    digitalWrite(relay, HIGH);
+  }
+
+  Serial.write(payload, length);
+  Serial.println();
+}
 
 
 void setup(){
   Serial.begin(9600);
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-
-  //setup_wifi();
-  //client.setServer(mqtt_server, 1883);
-  //client.setCallback(callback);
+  WiFi.begin(WIFISSID, PASSWORD);
+  TwoWire.begin(18, 19)   //SDA=18 SCL=19
 
   delay(1000); //Take some time to open up the Serial Monitor
+
+  Serial.println();
+  Serial.print("Wait for WiFi...");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  Serial.println("");
+  Serial.println("WiFi Connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  client.setServer(mqttBroker, 1883);
+  client.setCallback(callback);
+
+  client.subscribe(topicSubscribe);
+
+  if (!client.connected()) {
+    client.subscribe(topicSubscribe);
+    reconnect();
+  }
+
+  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
+  sprintf(payload, "%s", ""); // Cleans the payload
+  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_TEMP); // Adds the variable label
+
 
   //Increment boot number and print it every reboot
   ++bootCount;
@@ -113,7 +176,15 @@ void setup(){
       Serial.print(" degrees (");
       Serial.print(LM75A::degreesToFahrenheit(temperature_in_degrees));
       Serial.println(" Fahrenheit)");
+      dtostrf(temperature_in_degrees, 4, 2, str_temperature);
   }
+
+  ///   DATA PUBLISHING
+  sprintf(payload, "%s {\"value\": %s}}", payload, str_temperature); // Adds the value
+  Serial.println("Publishing data to Ubidots Cloud");
+  client.publish(topic, payload);
+  client.loop();
+  delay(1000);
 
   Serial.println("\n");
 
@@ -125,74 +196,6 @@ void setup(){
 }
 
 void loop(){
-}
-
-void setup_wifi() {
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void callback(char* topic, byte* message, unsigned int length) {
-  Serial.print("Message arrived on topic: ");
-  Serial.print(topic);
-  Serial.print(". Message: ");
-  String messageTemp;
-
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)message[i]);
-    messageTemp += (char)message[i];
-  }
-  Serial.println();
-
-  // Feel free to add more if statements to control more GPIOs with MQTT
-
-  // If a message is received on the topic esp32/output, you check if the message is either "on" or "off".
-  // Changes the output state according to the message
-  if (String(topic) == "esp32/output") {
-    Serial.print("Changing output to ");
-    if(messageTemp == "on"){
-      Serial.println("on");
-      //digitalWrite(ledPin, HIGH);
-    }
-    else if(messageTemp == "off"){
-      Serial.println("off");
-      //digitalWrite(ledPin, LOW);
-    }
-  }
-}
-
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (client.connect("ESP8266Client")) {
-      Serial.println("connected");
-      // Subscribe
-      client.subscribe("esp32/output");
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  }
 }
 
 
