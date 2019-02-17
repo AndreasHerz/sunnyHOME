@@ -58,6 +58,11 @@ private:
         {
             if(!_buffer){
                 _buffer = (uint8_t *)malloc(_size);
+                if(!_buffer) {
+                    log_e("Not enough memory to allocate buffer");
+                    _failed = true;
+                    return 0;
+                }
             }
             if(_fill && _pos == _fill){
                 _fill = 0;
@@ -67,8 +72,10 @@ private:
                 return 0;
             }
             int res = recv(_fd, _buffer + _fill, _size - _fill, MSG_DONTWAIT);
-            if(res < 0 && errno != EWOULDBLOCK) {
-                _failed = true;
+            if(res < 0) {
+                if(errno != EWOULDBLOCK) {
+                    _failed = true;
+                }
                 return 0;
             }
             _fill += res;
@@ -196,11 +203,16 @@ void WiFiClient::stop()
 
 int WiFiClient::connect(IPAddress ip, uint16_t port)
 {
+    return connect(ip,port,-1);
+}
+int WiFiClient::connect(IPAddress ip, uint16_t port, int32_t timeout)
+{
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         log_e("socket: %d", errno);
         return 0;
     }
+    fcntl( sockfd, F_SETFL, fcntl( sockfd, F_GETFL, 0 ) | O_NONBLOCK );
 
     uint32_t ip_addr = ip;
     struct sockaddr_in serveraddr;
@@ -208,12 +220,21 @@ int WiFiClient::connect(IPAddress ip, uint16_t port)
     serveraddr.sin_family = AF_INET;
     bcopy((const void *)(&ip_addr), (void *)&serveraddr.sin_addr.s_addr, 4);
     serveraddr.sin_port = htons(port);
-    int res = lwip_connect_r(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
-    if (res < 0) {
-        log_e("lwip_connect_r: %d", errno);
+    fd_set fdset;
+    struct timeval tv;
+    FD_ZERO(&fdset);
+    FD_SET(sockfd, &fdset);
+    tv.tv_sec = 0;
+    tv.tv_usec = timeout * 1000;
+    lwip_connect_r(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+    int res = select(sockfd + 1, nullptr, &fdset, nullptr, timeout<0 ? nullptr : &tv);
+    if (res != 1)
+    {
+        log_e("select: %d",errno);
         close(sockfd);
         return 0;
     }
+    fcntl( sockfd, F_SETFL, fcntl( sockfd, F_GETFL, 0 ) & (~O_NONBLOCK) );
     clientSocketHandle.reset(new WiFiClientSocketHandle(sockfd));
     _rxBuffer.reset(new WiFiClientRxBuffer(sockfd));
     _connected = true;
@@ -222,11 +243,15 @@ int WiFiClient::connect(IPAddress ip, uint16_t port)
 
 int WiFiClient::connect(const char *host, uint16_t port)
 {
+    return connect(host,port,-1);
+}
+int WiFiClient::connect(const char *host, uint16_t port, int32_t timeout)
+{
     IPAddress srv((uint32_t)0);
     if(!WiFiGenericClass::hostByName(host, srv)){
         return 0;
     }
-    return connect(srv, port);
+    return connect(srv, port, timeout);
 }
 
 int WiFiClient::setSocketOption(int option, char* value, size_t len)
@@ -240,6 +265,7 @@ int WiFiClient::setSocketOption(int option, char* value, size_t len)
 
 int WiFiClient::setTimeout(uint32_t seconds)
 {
+    Client::setTimeout(seconds * 1000);
     struct timeval tv;
     tv.tv_sec = seconds;
     tv.tv_usec = 0;
@@ -397,7 +423,8 @@ int WiFiClient::peek()
 
 int WiFiClient::available()
 {
-    if(!_connected) {
+    if(!_rxBuffer)
+    {
         return 0;
     }
     int res = _rxBuffer->available();
@@ -438,6 +465,8 @@ uint8_t WiFiClient::connected()
     if (_connected) {
         uint8_t dummy;
         int res = recv(fd(), &dummy, 0, MSG_DONTWAIT);
+        // avoid unused var warning by gcc
+        (void)res;
         switch (errno) {
             case EWOULDBLOCK:
             case ENOENT: //caused by vfs

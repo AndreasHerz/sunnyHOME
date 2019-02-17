@@ -1,7 +1,7 @@
 //Standart
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#include <Wire.h>
+#include "Wire.h"
 //WiFi
 #include <WiFi.h>
 #include "libraries/PubSubClient.h"
@@ -26,6 +26,9 @@
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
 
+///   I2C
+TwoWire i2c = TwoWire(0);
+
 ///   WiFi
 char mqttBroker[]  = "things.ubidots.com";
 char payload[100];
@@ -49,7 +52,7 @@ static void smartDelay(unsigned long ms);
 static void printFloat(float val, bool valid, int len, int prec);
 static void printInt(unsigned long val, bool valid, int len);
 static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
-static void printStr(const char *str, int len);
+//static void printStr(const char *str, int len);
 
 ///   Temperature Sensor
 // Create I2C LM75A instance
@@ -111,7 +114,7 @@ void setup(){
   Serial.begin(9600);
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   WiFi.begin(WIFISSID, PASSWORD);
-  TwoWire.begin(18, 19)   //SDA=18 SCL=19
+  i2c.begin(18, 19);   //SDA=18 SCL=19
 
   delay(1000); //Take some time to open up the Serial Monitor
 
@@ -273,10 +276,10 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
   smartDelay(0);
 }
 
-static void printStr(const char *str, int len)
+/*static void printStr(const char *str, int len)
 {
   int slen = strlen(str);
   for (int i=0; i<len; ++i)
     Serial.print(i<slen ? str[i] : ' ');
   smartDelay(0);
-}
+}*/
