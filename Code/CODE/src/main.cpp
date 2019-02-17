@@ -17,7 +17,7 @@
 #define TOKEN "A1E-XiyvObDGuNpIeTXMjqlEiCFhpm6Qxi" // Put your Ubidots' TOKEN
 #define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
 
-///   labels
+///   Labels
 #define VARIABLE_LABEL_TEMP "temperature" // Assing the variable label
 #define VARIABLE_LABEL_GPS "gps" // Assing the variable label
 #define DEVICE_LABEL "esp32" // Assig the device label
