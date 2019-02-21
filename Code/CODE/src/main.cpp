@@ -1,10 +1,10 @@
-//Standart
+//ESP32 / Arduino
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include "Wire.h"
 //WiFi
-#include <WiFi.h>
-#include "libraries/PubSubClient.h"
+#include "libraries/Wifi/WiFi.h"
+#include "libraries/Wifi/PubSubClient.h"
 //GPS
 #include "libraries/TinyGPS++.h"
 //Sensors
@@ -34,7 +34,6 @@ char mqttBroker[]  = "things.ubidots.com";
 char payload[100];
 char topic[150];
 char topicSubscribe[100];
-
 // Space to store values to send
 char str_temperature[10];
 
@@ -42,11 +41,12 @@ WiFiClient ubidots;
 PubSubClient client(ubidots);
 
 ///   GPS Globals
-HardwareSerial Serial_2(2);
-#define RXD2 17
-#define TXD2 16
+HardwareSerial Serial_2(2); // (2) weil UART2
+#define RXD2 16
+#define TXD2 17
 // The TinyGPS++ object
 TinyGPSPlus gps;
+
 ///   GPS Functions
 static void smartDelay(unsigned long ms);
 static void printFloat(float val, bool valid, int len, int prec);
@@ -99,28 +99,26 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(p, payload, length);
   p[length] = NULL;
   String message(p);
-  if (message == "0") {
-    digitalWrite(relay, LOW);
-  } else {
-    digitalWrite(relay, HIGH);
-  }
-
   Serial.write(payload, length);
-  Serial.println();
+  Serial.println(topic);
 }
 
 
 void setup(){
   Serial.begin(9600);
+  delay(5000);
+  Serial.print("!!! I HAVE STARTED !!!");
+  delay(5000);
+
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   WiFi.begin(WIFISSID, PASSWORD);
   i2c.begin(18, 19);   //SDA=18 SCL=19
 
   delay(1000); //Take some time to open up the Serial Monitor
 
+  //  Connecting to WiFi
   Serial.println();
   Serial.print("Wait for WiFi...");
-
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
