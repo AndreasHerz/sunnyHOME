@@ -1,10 +1,13 @@
 //ESP32 / Arduino
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#include "Wire.h"
+#include <Wire.h>
 //WiFi
-#include "libraries/Wifi/WiFi.h"
+//#include "libraries/Wifi/WiFi.h"
+#include <WiFi.h>
 #include "libraries/Wifi/PubSubClient.h"
+
+
 //GPS
 #include "libraries/TinyGPS++.h"
 //Sensors
@@ -99,7 +102,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(p, payload, length);
   p[length] = NULL;
   String message(p);
-  Serial.write(payload, length);
+  //Serial.write(payload, length);
   Serial.println(topic);
 }
 
@@ -110,9 +113,9 @@ void setup(){
   Serial.print("!!! I HAVE STARTED !!!");
   delay(5000);
 
-  Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  //Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   WiFi.begin(WIFISSID, PASSWORD);
-  i2c.begin(18, 19);   //SDA=18 SCL=19
+  //i2c.begin(18, 19);   //SDA=18 SCL=19
 
   delay(1000); //Take some time to open up the Serial Monitor
 
@@ -197,6 +200,7 @@ void setup(){
 }
 
 void loop(){
+  delay(1);
 }
 
 
