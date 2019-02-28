@@ -115,7 +115,7 @@ void setup(){
 
   //Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   WiFi.begin(WIFISSID, PASSWORD);
-  //i2c.begin(18, 19);   //SDA=18 SCL=19
+  i2c.begin(12, 13, 9600);   //SDA=12 SCL=13
 
   delay(1000); //Take some time to open up the Serial Monitor
 
