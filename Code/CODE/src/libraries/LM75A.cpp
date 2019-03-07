@@ -11,6 +11,9 @@
 #include "LM75A.h"
 #include <Wire.h>
 
+///   I2C
+TwoWire i2c1 = TwoWire(1);
+
 namespace LM75AConstValues
 {
 
@@ -43,7 +46,7 @@ LM75A::LM75A(bool A0_value, bool A1_value, bool A2_value)
     _i2c_device_address += 4;
   }
 
-  Wire.begin();
+  i2c1.begin(19, 23);
 }
 
 float LM75A::fahrenheitToDegrees(float temperature_in_fahrenheit)
@@ -73,16 +76,16 @@ float LM75A::getTemperatureInDegrees() const
   uint16_t i2c_received = 0;
 
   // Go to temperature data register
-  Wire.beginTransmission(_i2c_device_address);
-  Wire.write(LM75A_REG_ADDR_TEMP);
-  if(Wire.endTransmission()) {
+  i2c1.beginTransmission(_i2c_device_address);
+  i2c1.write(LM75A_REG_ADDR_TEMP);
+  if(i2c1.endTransmission()) {
     // Transmission error
     return real_result;
   }
 
   // Get content
-  if (Wire.requestFrom(_i2c_device_address, 2)) {
-    Wire.readBytes((uint8_t*)&i2c_received, 2);
+  if (i2c1.requestFrom(_i2c_device_address, 2)) {
+    i2c1.readBytes((uint8_t*)&i2c_received, 2);
   } else {
     // Can't read temperature
     return real_result;

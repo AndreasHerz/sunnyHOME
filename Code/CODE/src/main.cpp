@@ -9,7 +9,8 @@
 //GPS
 #include "libraries/TinyGPS++.h"
 //Sensors
-#include "libraries/LM75A.h"
+//#include "libraries/LM75A.h"
+#include "libraries/Temperature_LM75_Derived.h"
 #include "libraries/DS1307.h"
 
 ///   WiFi Constants
@@ -30,10 +31,6 @@
 ///   I2C
 TwoWire i2c = TwoWire(0);
 
-
-
-
-
 ////              GPS-Reseiver                  ////
 HardwareSerial Serial_2(2); // (2) weil UART2
 //  Rx and Dx PIN-SET
@@ -48,11 +45,14 @@ static void printInt(unsigned long val, bool valid, int len);
 static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
 //static void printStr(const char *str, int len);
 
+/*
 ////               Temperature Sensor           ////
 // Create I2C LM75A instance
 LM75A lm75a_sensor(false,  //A0 LM75A pin state
                    false,  //A1 LM75A pin state
                    false); //A2 LM75A pin state
+*/
+Generic_LM75 temperature;
 
 ////               Deep-Sleep Mode              ////
 ///   Deep-Sleep Counter
@@ -80,6 +80,9 @@ void setup(){
   Serial.begin(9600);
   delay(5000);
   Serial.print("!!! I HAVE STARTED !!!");
+  Serial.print("Temperature = ");
+  Serial.print(temperature.readTemperatureC());
+  Serial.println(" C");
   delay(5000);
 
   Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
@@ -138,6 +141,7 @@ void setup(){
 
   Serial.println("\n\n");
 
+/*
   ///   Temperature Meausrement
   float temperature_in_degrees = lm75a_sensor.getTemperatureInDegrees();
 
@@ -151,7 +155,7 @@ void setup(){
       Serial.println(" Fahrenheit)");
       //dtostrf(temperature_in_degrees, 4, 2, str_temperature);
   }
-
+*/
   ///   DATA PUBLISHING
   sprintf(payload, "%s {\"value\": %s}}", payload, str_temperature); // Adds the value
   Serial.println("Publishing data to Ubidots Cloud");
