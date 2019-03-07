@@ -6,8 +6,6 @@
 //#include "libraries/Wifi/WiFi.h"
 #include <WiFi.h>
 #include "libraries/Wifi/PubSubClient.h"
-
-
 //GPS
 #include "libraries/TinyGPS++.h"
 //Sensors
@@ -20,18 +18,49 @@
 #define TOKEN "A1E-XiyvObDGuNpIeTXMjqlEiCFhpm6Qxi" // Put your Ubidots' TOKEN
 #define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
 
-///   Labels
+///   Labels for MQTT
 #define VARIABLE_LABEL_TEMP "temperature" // Assing the variable label
 #define VARIABLE_LABEL_GPS "gps" // Assing the variable label
 #define DEVICE_LABEL "esp32" // Assig the device label
 
 ///   Deep-Sleep Defines
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  15        /* Time ESP32 will go to sleep (in seconds) */
+#define TIME_TO_SLEEP  15          /* Time ESP32 will go to sleep (in seconds) */
 
 ///   I2C
 TwoWire i2c = TwoWire(0);
 
+
+
+
+
+////              GPS-Reseiver                  ////
+HardwareSerial Serial_2(2); // (2) weil UART2
+//  Rx and Dx PIN-SET
+#define RXD2 16
+#define TXD2 17
+// The TinyGPS++ object
+TinyGPSPlus gps;
+// GPS Functions
+static void smartDelay(unsigned long ms);
+static void printFloat(float val, bool valid, int len, int prec);
+static void printInt(unsigned long val, bool valid, int len);
+static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
+//static void printStr(const char *str, int len);
+
+////               Temperature Sensor           ////
+// Create I2C LM75A instance
+LM75A lm75a_sensor(false,  //A0 LM75A pin state
+                   false,  //A1 LM75A pin state
+                   false); //A2 LM75A pin state
+
+////               Deep-Sleep Mode              ////
+///   Deep-Sleep Counter
+RTC_DATA_ATTR int bootCount = 0;
+// Method to print the reason by which ESP32 has been awaken from sleep
+void print_wakeup_reason();
+
+////                WiFi/MQTT                   ////
 ///   WiFi
 char mqttBroker[]  = "things.ubidots.com";
 char payload[100];
@@ -39,72 +68,12 @@ char topic[150];
 char topicSubscribe[100];
 // Space to store values to send
 char str_temperature[10];
-
+// Client
 WiFiClient ubidots;
 PubSubClient client(ubidots);
-
-///   GPS Globals
-HardwareSerial Serial_2(2); // (2) weil UART2
-#define RXD2 16
-#define TXD2 17
-// The TinyGPS++ object
-TinyGPSPlus gps;
-
-///   GPS Functions
-static void smartDelay(unsigned long ms);
-static void printFloat(float val, bool valid, int len, int prec);
-static void printInt(unsigned long val, bool valid, int len);
-static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
-//static void printStr(const char *str, int len);
-
-///   Temperature Sensor
-// Create I2C LM75A instance
-LM75A lm75a_sensor(false,  //A0 LM75A pin state
-                   false,  //A1 LM75A pin state
-                   false); //A2 LM75A pin state
-
-///   Deep-Sleep Counter
-RTC_DATA_ATTR int bootCount = 0;
-// Method to print the reason by which ESP32 has been awaken from sleep
-void print_wakeup_reason(){
-    esp_sleep_wakeup_cause_t wakeup_reason;
-    wakeup_reason = esp_sleep_get_wakeup_cause();
-    switch(wakeup_reason)
-    {
-        case 1  : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-        case 2  : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-        case 3  : Serial.println("Wakeup caused by timer"); break;
-        case 4  : Serial.println("Wakeup caused by touchpad"); break;
-        case 5  : Serial.println("Wakeup caused by ULP program"); break;
-        default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
-    }
-}
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.println("Attempting MQTT connection...");
-
-    // Attemp to connect
-    if (client.connect(MQTT_CLIENT_NAME, TOKEN, "")) {
-      Serial.println("Connected");
-      client.subscribe(topicSubscribe);
-    } else {
-      Serial.print("Failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 2 seconds");
-      // Wait 2 seconds before retrying
-      delay(2000);
-    }
-  }
-}
-void callback(char* topic, byte* payload, unsigned int length) {
-  char p[length + 1];
-  memcpy(p, payload, length);
-  p[length] = NULL;
-  String message(p);
-  //Serial.write(payload, length);
-  Serial.println(topic);
-}
+//  Wifi/MQTT Functions
+void reconnect();
+void callback(char* topic, byte* payload, unsigned int length);
 
 
 void setup(){
@@ -113,9 +82,9 @@ void setup(){
   Serial.print("!!! I HAVE STARTED !!!");
   delay(5000);
 
-  //Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   WiFi.begin(WIFISSID, PASSWORD);
-  i2c.begin(12, 13, 9600);   //SDA=12 SCL=13
+  i2c.begin(19, 23);   //SDA=12 SCL=13
 
   delay(1000); //Take some time to open up the Serial Monitor
 
@@ -180,7 +149,7 @@ void setup(){
       Serial.print(" degrees (");
       Serial.print(LM75A::degreesToFahrenheit(temperature_in_degrees));
       Serial.println(" Fahrenheit)");
-      dtostrf(temperature_in_degrees, 4, 2, str_temperature);
+      //dtostrf(temperature_in_degrees, 4, 2, str_temperature);
   }
 
   ///   DATA PUBLISHING
@@ -285,3 +254,45 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
     Serial.print(i<slen ? str[i] : ' ');
   smartDelay(0);
 }*/
+
+// Sleep Mode Weakup Reason
+void print_wakeup_reason(){
+    esp_sleep_wakeup_cause_t wakeup_reason;
+    wakeup_reason = esp_sleep_get_wakeup_cause();
+    switch(wakeup_reason)
+    {
+        case 1  : Serial.println("Wakeup caused by external signal using RTC_IO"); break;
+        case 2  : Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
+        case 3  : Serial.println("Wakeup caused by timer"); break;
+        case 4  : Serial.println("Wakeup caused by touchpad"); break;
+        case 5  : Serial.println("Wakeup caused by ULP program"); break;
+        default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
+    }
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.println("Attempting MQTT connection...");
+
+    // Attemp to connect
+    if (client.connect(MQTT_CLIENT_NAME, TOKEN, "")) {
+      Serial.println("Connected");
+      client.subscribe(topicSubscribe);
+    } else {
+      Serial.print("Failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 2 seconds");
+      // Wait 2 seconds before retrying
+      delay(2000);
+    }
+  }
+}
+void callback(char* topic, byte* payload, unsigned int length) {
+  char p[length + 1];
+  memcpy(p, payload, length);
+  p[length] = NULL;
+  String message(p);
+  Serial.write(payload, length);
+  Serial.println(topic);
+}
