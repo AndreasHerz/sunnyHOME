@@ -27,12 +27,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <Wire.h>
 #include "DS1307.h"
 
+///   I2C
+TwoWire i2c2 = TwoWire(2);
+
 const uint8_t daysArray [] PROGMEM = { 31,28,31,30,31,30,31,31,30,31,30,31 };
 const uint8_t dowArray[] PROGMEM = { 0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4 };
 
 bool DS1307::begin(void)
 {
-    Wire.begin();
+    i2c2.begin();
 
     t.year = 2000;
     t.month = 1;
@@ -48,39 +51,39 @@ bool DS1307::begin(void)
 
 void DS1307::setDateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
 {
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
 
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_TIME);
+        i2c2.write(DS1307_REG_TIME);
     #else
-        Wire.send(DS1307_REG_TIME);
+        i2c2.send(DS1307_REG_TIME);
     #endif
 
     #if ARDUINO >= 100
-        Wire.write(dec2bcd(second));
-        Wire.write(dec2bcd(minute));
-        Wire.write(dec2bcd(hour));
-        Wire.write(dec2bcd(dow(year, month, day)));
-        Wire.write(dec2bcd(day));
-        Wire.write(dec2bcd(month));
-        Wire.write(dec2bcd(year-2000));
+        i2c2.write(dec2bcd(second));
+        i2c2.write(dec2bcd(minute));
+        i2c2.write(dec2bcd(hour));
+        i2c2.write(dec2bcd(dow(year, month, day)));
+        i2c2.write(dec2bcd(day));
+        i2c2.write(dec2bcd(month));
+        i2c2.write(dec2bcd(year-2000));
     #else
-        Wire.send(dec2bcd(second));
-        Wire.send(dec2bcd(minute));
-        Wire.send(dec2bcd(hour));
-        Wire.send(dec2bcd(dow(year, month, day)));
-        Wire.send(dec2bcd(day));
-        Wire.send(dec2bcd(month));
-        Wire.send(dec2bcd(year-2000));
+        i2c2.send(dec2bcd(second));
+        i2c2.send(dec2bcd(minute));
+        i2c2.send(dec2bcd(hour));
+        i2c2.send(dec2bcd(dow(year, month, day)));
+        i2c2.send(dec2bcd(day));
+        i2c2.send(dec2bcd(month));
+        i2c2.send(dec2bcd(year-2000));
     #endif
 
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_TIME);
+        i2c2.write(DS1307_REG_TIME);
     #else
-        Wire.send(DS1307_REG_TIME);
+        i2c2.send(DS1307_REG_TIME);
     #endif
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 }
 
 void DS1307::setDateTime(uint32_t t)
@@ -180,8 +183,8 @@ char* DS1307::dateFormat(const char* dateFormat, RTCDateTime dt)
         {
             // Day decoder
             case 'd':
-                sprintf(helper, "%02d", dt.day); 
-                strcat(buffer, (const char *)helper); 
+                sprintf(helper, "%02d", dt.day);
+                strcat(buffer, (const char *)helper);
                 break;
             case 'j':
                 sprintf(helper, "%d", dt.day);
@@ -231,15 +234,15 @@ char* DS1307::dateFormat(const char* dateFormat, RTCDateTime dt)
 
             // Year decoder
             case 'Y':
-                sprintf(helper, "%d", dt.year); 
-                strcat(buffer, (const char *)helper); 
+                sprintf(helper, "%d", dt.year);
+                strcat(buffer, (const char *)helper);
                 break;
             case 'y': sprintf(helper, "%02d", dt.year-2000);
                 strcat(buffer, (const char *)helper);
                 break;
             case 'L':
-                sprintf(helper, "%d", isLeapYear(dt.year)); 
-                strcat(buffer, (const char *)helper); 
+                sprintf(helper, "%d", isLeapYear(dt.year));
+                strcat(buffer, (const char *)helper);
                 break;
 
             // Hour decoder
@@ -267,24 +270,24 @@ char* DS1307::dateFormat(const char* dateFormat, RTCDateTime dt)
                 break;
 
             // Minute decoder
-            case 'i': 
+            case 'i':
                 sprintf(helper, "%02d", dt.minute);
                 strcat(buffer, (const char *)helper);
                 break;
 
             // Second decoder
             case 's':
-                sprintf(helper, "%02d", dt.second); 
-                strcat(buffer, (const char *)helper); 
+                sprintf(helper, "%02d", dt.second);
+                strcat(buffer, (const char *)helper);
                 break;
 
             // Misc decoder
-            case 'U': 
+            case 'U':
                 sprintf(helper, "%lu", dt.unixtime);
                 strcat(buffer, (const char *)helper);
                 break;
 
-            default: 
+            default:
                 strncat(buffer, dateFormat, 1);
                 break;
         }
@@ -298,34 +301,34 @@ RTCDateTime DS1307::getDateTime(void)
 {
     int values[7];
 
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_TIME);
+        i2c2.write(DS1307_REG_TIME);
     #else
-        Wire.send(DS1307_REG_TIME);
+        i2c2.send(DS1307_REG_TIME);
     #endif
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
-    Wire.requestFrom(DS1307_ADDRESS, 7);
+    i2c2.requestFrom(DS1307_ADDRESS, 7);
 
-    while(!Wire.available()) {};
+    while(!i2c2.available()) {};
 
     for (int i = 6; i >= 0; i--)
     {
 	if (i == 3)
 	{
-	values[i] = Wire.read();
+	values[i] = i2c2.read();
 	} else
 	{
         #if ARDUINO >= 100
-        values[i] = bcd2dec(Wire.read());
+        values[i] = bcd2dec(i2c2.read());
         #else
-        values[i] = bcd2dec(Wire.receive());
+        values[i] = bcd2dec(i2c2.receive());
         #endif
         }
     }
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
     t.year = values[0] + 2000;
     t.month = values[1];
@@ -339,29 +342,29 @@ RTCDateTime DS1307::getDateTime(void)
     return t;
 }
 
-uint8_t DS1307::isReady(void) 
+uint8_t DS1307::isReady(void)
 {
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
 
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_TIME);
+        i2c2.write(DS1307_REG_TIME);
     #else
-        Wire.send(DS1307_REG_TIME);
+        i2c2.send(DS1307_REG_TIME);
     #endif
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
-    Wire.requestFrom(DS1307_ADDRESS, 1);
+    i2c2.requestFrom(DS1307_ADDRESS, 1);
 
-    while(!Wire.available()) {};
+    while(!i2c2.available()) {};
 
     #if ARDUINO >= 100
-        uint8_t ss = Wire.read();
+        uint8_t ss = i2c2.read();
     #else
-        uint8_t ss = Wire.receive();
+        uint8_t ss = i2c2.receive();
     #endif
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
     return !(ss>>7);
 }
@@ -386,45 +389,45 @@ uint8_t DS1307::writeByte(uint8_t offset, uint8_t data)
 
 void DS1307::readPacket(uint8_t offset, uint8_t * buff, uint8_t size)
 {
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
 
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_RAM + offset);
+        i2c2.write(DS1307_REG_RAM + offset);
     #else
-        Wire.send(DS1307_REG_RAM + offset);
+        i2c2.send(DS1307_REG_RAM + offset);
     #endif
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
-    Wire.requestFrom(DS1307_ADDRESS, (int)size);
+    i2c2.requestFrom(DS1307_ADDRESS, (int)size);
 
-    while (!Wire.available()) {}
+    while (!i2c2.available()) {}
 
     for (int i = 0; i < size; i++)
     {
         #if ARDUINO >= 100
-            buff[i] = Wire.read();
+            buff[i] = i2c2.read();
         #else
-            buff[i] = Wire.receive();
+            buff[i] = i2c2.receive();
         #endif
     }
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 }
 
 void DS1307::writePacket(uint8_t offset, uint8_t * buff, uint8_t size)
 {
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
 
     #if ARDUINO >= 100
-        Wire.write(DS1307_REG_RAM + offset);
-        Wire.write(buff, size);
+        i2c2.write(DS1307_REG_RAM + offset);
+        i2c2.write(buff, size);
     #else
-        Wire.send(DS1307_REG_RAM + offset);
-        Wire.send(buff, size);
+        i2c2.send(DS1307_REG_RAM + offset);
+        i2c2.send(buff, size);
     #endif
 
-    Wire.endTransmission();
+    i2c2.endTransmission();
 }
 
 void DS1307::readMemory(uint8_t offset, uint8_t * buff, uint8_t size)
@@ -724,36 +727,36 @@ uint8_t DS1307::dow(uint16_t y, uint8_t m, uint8_t d)
 
 void DS1307::writeRegister8(uint8_t reg, uint8_t value)
 {
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
     #if ARDUINO >= 100
-        Wire.write(reg);
-        Wire.write(value);
+        i2c2.write(reg);
+        i2c2.write(value);
     #else
-        Wire.send(reg);
-        Wire.send(value);
+        i2c2.send(reg);
+        i2c2.send(value);
     #endif
-    Wire.endTransmission();
+    i2c2.endTransmission();
 }
 
 uint8_t DS1307::readRegister8(uint8_t reg)
 {
     uint8_t value;
-    Wire.beginTransmission(DS1307_ADDRESS);
+    i2c2.beginTransmission(DS1307_ADDRESS);
     #if ARDUINO >= 100
-        Wire.write(reg);
+        i2c2.write(reg);
     #else
-        Wire.send(reg);
+        i2c2.send(reg);
     #endif
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
-    Wire.requestFrom(DS1307_ADDRESS, 1);
-    while(!Wire.available()) {};
+    i2c2.requestFrom(DS1307_ADDRESS, 1);
+    while(!i2c2.available()) {};
     #if ARDUINO >= 100
-        value = Wire.read();
+        value = i2c2.read();
     #else
-        value = Wire.receive();
+        value = i2c2.receive();
     #endif;
-    Wire.endTransmission();
+    i2c2.endTransmission();
 
     return value;
 }
