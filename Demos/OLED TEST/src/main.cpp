@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include "Adafruit_SSD1306.h"
-#include "ESP8266WiFi.h"
+//#include "ESP8266WiFi.h"
 
 
 //Don`t use this:
@@ -54,6 +54,7 @@ void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h);
 
 void setup()   {
   Serial.begin(9600);
+  Wire.begin(19,23);
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x64, grounded)
