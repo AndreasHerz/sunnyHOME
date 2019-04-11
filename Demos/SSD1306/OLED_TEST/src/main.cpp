@@ -5,12 +5,32 @@
 #include "LM75A.h"
 #include <WiFi.h>
 #include "PubSubClient.h"
+#include "TinyGPS++.h"
 
-////               OLED Display                   ////
+////                OLED Display                    ////
 Adafruit_SSD1306 display(0);
 #if (SSD1306_LCDHEIGHT != 64)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
+
+////                GPS-Reseiver                    ////
+HardwareSerial Serial_2(2); // (2) weil UART2
+//  Rx and Dx PIN-SET
+#define RXD2 16
+#define TXD2 17
+// The TinyGPS++ object
+TinyGPSPlus gps;
+// GPS Functions
+static void smartDelay(unsigned long ms);
+static void printFloat(float val, bool valid, int len, int prec);
+static void printInt(unsigned long val, bool valid, int len);
+static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
+//static void printStr(const char *str, int len);
+//  Publishing Strings
+char str_long[20];
+char str_lat[20];
+
+
 
 ////               Temperature Sensor             ////
 // Create I2C LM75A instance
@@ -19,13 +39,16 @@ LM75A lm75a_sensor(false,  //A0 LM75A pin state
                    false); //A2 LM75A pin state
 
 ///   WiFi Constants
-#define WIFISSID "Magdis Mac" // Put your WifiSSID here
-#define PASSWORD "magdiiscool" // Put your wifi password here
+#define WIFISSID "HerzWiFi" // Put your WifiSSID here
+#define PASSWORD "vohdbmrfsl9p" // Put your wifi password here
 #define TOKEN "A1E-XiyvObDGuNpIeTXMjqlEiCFhpm6Qxi" // Put your Ubidots' TOKEN
 #define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
 
 ///   Labels for MQTT
 #define VARIABLE_LABEL_TEMP "temperature" // Assing the variable label
+#define VARIABLE_LABEL_LONG "long" // Assing the variable label
+#define VARIABLE_LABEL_LAT "lat" // Assing the variable label
+#define VARIABLE_LABEL_GPS "gps" // Assing the variable label
 #define DEVICE_LABEL "esp32" // Assig the device label
 
 ////                WiFi/MQTT                   ////
@@ -49,6 +72,7 @@ void testscrolltext();
 
 void setup()   {
   Serial.begin(9600);
+  Serial_2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   Wire.begin(19,23);
   WiFi.begin(WIFISSID, PASSWORD);
 
@@ -56,16 +80,10 @@ void setup()   {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x64, grounded)
   // init done
 
-  // Show image buffer on the display hardware.
-  // Since the buffer is intialized with an Adafruit splashscreen
-  // internally, this will display the splashscreen.
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
+  Serial.println("\n\n\n**********  Welcome to sunnyHOME  ************");
+  Serial.println("****** you`re personal Weather Station  ******");
   // draw scrolling text
   testscrolltext();
-  delay(2000);
   display.clearDisplay();
   display.display();
 
@@ -91,11 +109,6 @@ void setup()   {
     reconnect();
   }
 
-  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
-  sprintf(payload, "%s", ""); // Cleans the payload
-  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_TEMP); // Adds the variable label
-
-
 
 
 
@@ -115,6 +128,22 @@ void loop() {
   display.display();
   display.clearDisplay();
 
+  ///   GPS GPS_DATA
+  Serial.print("\nLat: ");
+  printFloat(gps.location.lat(), gps.location.isValid(), 11, 6);
+  dtostrf(gps.location.lat(), /*11*/9, 6, str_lat);  //  for MQTT
+  Serial.print("\nLong: ");
+  printFloat(gps.location.lng(), gps.location.isValid(), 12, 6);
+  dtostrf(gps.location.lng(), /*12*/9, 6, str_long); //  for MQTT
+  //printInt(gps.location.age(), gps.location.isValid(), 5);
+  printDateTime(gps.date, gps.time);
+  /*printInt(gps.charsProcessed(), true, 6);
+  printInt(gps.sentencesWithFix(), true, 10);
+  printInt(gps.failedChecksum(), true, 9);*/
+  Serial.println();
+
+  Serial.println("\n\n");
+
   float temperature_in_degrees = lm75a_sensor.getTemperatureInDegrees();
   if (temperature_in_degrees == INVALID_LM75A_TEMPERATURE) {
       Serial.println("Error while getting temperature");
@@ -128,14 +157,57 @@ void loop() {
   }
 
   ///   DATA PUBLISHING
+
+  ///   Temperature
+  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
+  sprintf(payload, "%s", ""); // Cleans the payload
+  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_TEMP); // Adds the variable label
   sprintf(payload, "%s {\"value\": %s}}", payload, str_temperature); // Adds the value
-  Serial.println("Publishing data to Ubidots Cloud");
+  Serial.println("\nPublishing Temperature to Ubidots Cloud");
+  Serial.println(payload);
   client.publish(topic, payload);
   client.loop();
-  delay(1000);
+  ///   Longitude
+  /*sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
+  sprintf(payload, "%s", ""); // Cleans the payload
+  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_LONG); // Adds the variable label
+  sprintf(payload, "%s {\"value\": %s}}", payload, str_long); // Adds the value
+  Serial.println("\nPublishing Temperature to Ubidots Cloud");
+  client.publish(topic, payload);
+  client.loop();
+  ///   Latitude
+  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
+  sprintf(payload, "%s", ""); // Cleans the payload
+  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_LAT); // Adds the variable label
+  sprintf(payload, "%s {\"value\": %s}}", payload, str_lat); // Adds the value
+  Serial.println("\nPublishing Temperature to Ubidots Cloud");
+  client.publish(topic, payload);
+  client.loop();*/
+  ///   GPS
+  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
+  sprintf(payload, "%s", ""); // Cleans the payload
+  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_GPS); // Adds the variable label
+  sprintf(payload, "%s {\"value\":10,\"context\":{\"lat\":%s,\"lng\":%s}}}", payload, str_lat, str_long); // Adds the value
+  Serial.println("\nPublishing GPS to Ubidots Cloud:");
+  Serial.println(payload);
+  client.publish(topic, payload);
+  client.loop();
 
-  Serial.println("\n");
+  delay(5000);
+
+
+  Serial_2.flush();
+  Serial.flush();
 }
+
+
+
+
+
+
+
+
+
 
 void testscrolltext(void) {
   display.setTextSize(2);
@@ -189,3 +261,85 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.write(payload, length);
   Serial.println(topic);
 }
+
+// This custom version of delay() ensures that the gps object
+// is being "fed".
+static void smartDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do
+  {
+    while (Serial_2.available())
+      gps.encode(Serial_2.read());
+  } while (millis() - start < ms);
+}
+
+static void printFloat(float val, bool valid, int len, int prec)
+{
+  if (!valid)
+  {
+    while (len-- > 1)
+      Serial.print('*');
+    Serial.print(' ');
+  }
+  else
+  {
+    Serial.print(val, prec);
+    int vi = abs((int)val);
+    int flen = prec + (val < 0.0 ? 2 : 1); // . and -
+    flen += vi >= 1000 ? 4 : vi >= 100 ? 3 : vi >= 10 ? 2 : 1;
+    for (int i=flen; i<len; ++i)
+      Serial.print(' ');
+  }
+  smartDelay(0);
+}
+
+static void printInt(unsigned long val, bool valid, int len)
+{
+  char sz[32] = "*****************";
+  if (valid)
+    sprintf(sz, "%ld", val);
+  sz[len] = 0;
+  for (int i=strlen(sz); i<len; ++i)
+    sz[i] = ' ';
+  if (len > 0)
+    sz[len-1] = ' ';
+  Serial.print(sz);
+  smartDelay(0);
+}
+
+static void printDateTime(TinyGPSDate &d, TinyGPSTime &t)
+{
+  if (!d.isValid())
+  {
+    Serial.print(F("********** "));
+  }
+  else
+  {
+    char sz[32];
+    sprintf(sz, "%02d/%02d/%02d ", d.month(), d.day(), d.year());
+    Serial.print(sz);
+  }
+
+  if (!t.isValid())
+  {
+    Serial.print(F("******** "));
+  }
+  else
+  {
+    char sz[32];
+    sprintf(sz, "%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
+    Serial.print(sz);
+  }
+
+  printInt(d.age(), d.isValid(), 5);
+  smartDelay(0);
+}
+
+/*static void printStr(const char *str, int len)
+{
+  int slen = strlen(str);
+  for (int i=0; i<len; ++i)
+    Serial.print(i<slen ? str[i] : ' ');
+  smartDelay(0);
+}*/
