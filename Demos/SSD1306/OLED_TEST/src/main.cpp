@@ -39,9 +39,9 @@ LM75A lm75a_sensor(false,  //A0 LM75A pin state
                    false); //A2 LM75A pin state
 
 ///   WiFi Constants
-#define WIFISSID "HerzWiFi" // Put your WifiSSID here
-#define PASSWORD "vohdbmrfsl9p" // Put your wifi password here
-#define TOKEN "A1E-XiyvObDGuNpIeTXMjqlEiCFhpm6Qxi" // Put your Ubidots' TOKEN
+#define WIFISSID "WiFiName" // Put your WifiSSID here
+#define PASSWORD "WiFiPassword" // Put your wifi password here
+#define TOKEN "UBI-TOKEN" // Put your Ubidots' TOKEN
 #define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
 
 ///   Labels for MQTT
