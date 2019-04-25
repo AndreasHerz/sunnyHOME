@@ -1,0 +1,45 @@
+% !TEX root = ../Vorlage_DA.tex
+
+%	########################################################
+% 					Fazit und Persönliche Erfahrungen
+%	########################################################
+
+
+
+%	--------------------------------------------------------
+% 	Überschrift, Inhaltsverzeichnis
+%	--------------------------------------------------------
+\chapter{Fazit und Persönliche Erfahrungen}
+
+
+%	--------------------------------------------------------
+% 	Fazit
+%	--------------------------------------------------------
+\section{Fazit}
+
+\subsection{Zusammenfassung der Ergebnisse}
+    Im Großen und Ganzen wurden die wichtigsten Themenstellungen des Projektes behandelt und fertiggestellt. Einzig die Energie-Versorgung ist nicht fertig realisiert worden.
+    
+    Die Software funktioniert und der Funktionsablauf des Codes (siehe: \ref{ref:FnktAb}) ist fertiggestellt. Die Verbindung zu Ubidots (siehe: \ref{ref:Ubidots} ist stabil und es lassen sich die gewünschten Messwerte im Internet betrachten. Der Mikrocontroller wechselt ebenfalls nach dem Erfüllen seiner Aufgaben in den Deep-Sleep Modus, um dadurch Energie zu sparen.  
+
+\subsection{Mögliche Erweiterungen}
+    Damit die Wetterstation wirklich fertiggestellt ist, muss die Energie-Versorgung durch die Solarzellen fertiggestellt werden. Dafür werden Energieverbrauchs-Messungen am ESP32 benötigt, dann kann man erst den Energy-Harvesting Modul bestimmen. Und in Abhängigkeit des gewählten Moduls, bräuchte es noch einen passenden Akkumulator. Dazu ist bisher ein Lithium-Eisenphosphat-Akkumulator geplant gewesen, da dieser eine lange Lebensdauer hat, und der Aufladeprozess effizient ist.
+    
+    Ein weiterer Ansatzpunkt wäre die Realisierung einer Platine, auf der man den ESP32 ohne jeglicher Peripherie setzen könnte. Dadurch könnte man noch mehr an Energie sparen und eine längerfristigere Lösung für die Wetterstation schaffen. 
+    
+    Um die Wetterstation als Produkt anbieten zu können, bedarf es auch noch an einer eigenen Software. Eine mobile Applikation für Smartphone-Anwender wäre die ideale Lösung zur Visualisierung der Messdaten.
+    
+    Möchte man sunnyHOME in der freien Wildnis nutzen, würde es sich anbieten, eine Funkverbindung zu einer zusätzlichen Receiver-Hardware aufzubauen, welche dann die Daten ins Internet publiziert. Ein anderer Ansatz könnte eine Verbindung mit einem mobilen Funknetz sein. Dies würde jedoch stark auf die Kosten der Energie-Effizienz gehen. 
+
+\pagebreak
+
+%	--------------------------------------------------------
+% 	Persönliche Erfahrungen
+%	--------------------------------------------------------
+\section{Persönliche Erfahrungen}
+
+„Ohne Fleiß, kein Preis“. Dieses Sprichwort hat Recht. Wenn ambitionierte Ziele gesetzt werden, muss auch ambitioniert gearbeitet werden. Ein Problem bei der Sache kann jedoch sehr schnell eine falsche Einschätzung werden. Das man zum Beispiel im letzten Jahr genug Zeit hat, um das Projekt ausführlich zu realisieren. So hatte auch ich das Problem, kommende Schwierigkeiten und volle Terminkalender nicht vorauszusehen. 
+
+Softwareentwicklung lässt sich schwer einschätzen. Es läuft einmal alles glatt, und beim nächsten Start des Programms, funktioniert es aus mysteriösen Gründen auf einmal nicht mehr. Mal findet sich der Fehler binnen einer Stunde, und mal braucht es mehrere Wochen, bis es wieder weiter gehen kann. Es waren oft Fehler, welche davon kamen, das ich mich mit der Thematik zu wenig auskannte. In solchen Situationen muss man einfach durchhalten und ausdauernd weitersuchen. Dadurch eignet man sich die Fähigkeiten dann an, und sammelt Erfahrungen, welche einem zum Schluss dann unbezahlbar sind. Das muss ganz klar gesagt werden: Meine schönsten Momente bei diesem Projekt hatte ich immer dann, wenn der Fehler gefunden wurde und dieser spezielle „Aha“-Moment aufgetreten ist. 
+
+Schlussendlich bin ich sehr dankbar, dass ich in meinem Abschlussjahr die Möglichkeit hatte, ein Projekt wie dieses durchzuführen. Nicht nur für meine heutigen Arduino-Kenntnisse, welche meiner Meinung nach recht gut sind, sondern auch für die Erfahrungen im Bezug auf die Organisation und des Zeitmanagements eines solchen Projektes. 

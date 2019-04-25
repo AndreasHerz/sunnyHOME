@@ -1,4 +1,4 @@
-#include <arduino.h>
+#include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -31,8 +31,6 @@ static void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
 char str_long[20];
 char str_lat[20];
 
-
-
 ////               Temperature Sensor             ////
 // Create I2C LM75A instance
 LM75A lm75a_sensor(false,  //A0 LM75A pin state
@@ -40,9 +38,9 @@ LM75A lm75a_sensor(false,  //A0 LM75A pin state
                    false); //A2 LM75A pin state
 
 ///   WiFi Constants
-#define WIFISSID "WiFiName" // Put your WifiSSID here
-#define PASSWORD "WiFiPassword" // Put your wifi password here
-#define TOKEN "UBI-TOKEN" // Put your Ubidots' TOKEN
+#define WIFISSID "WiFi_Name" // Put your WifiSSID here
+#define PASSWORD "WiFi_Password" // Put your wifi password here
+#define TOKEN "Ubidots_Token" // Put your Ubidots' TOKEN
 #define MQTT_CLIENT_NAME "MQTT_Client" // MQTT client Name, it should be a random and unique ascii string and different from all other devices
 
 ///   Labels for MQTT
@@ -67,7 +65,7 @@ PubSubClient client(ubidots);
 void reconnect();
 void callback(char* topic, byte* payload, unsigned int length);
 
-
+//  Für OLED-Intro
 void testscrolltext();
 
 
@@ -109,10 +107,6 @@ void setup()   {
     client.subscribe(topicSubscribe);
     reconnect();
   }
-
-
-
-
 }
 
 
@@ -168,22 +162,7 @@ void loop() {
   Serial.println(payload);
   client.publish(topic, payload);
   client.loop();
-  ///   Longitude
-  /*sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
-  sprintf(payload, "%s", ""); // Cleans the payload
-  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_LONG); // Adds the variable label
-  sprintf(payload, "%s {\"value\": %s}}", payload, str_long); // Adds the value
-  Serial.println("\nPublishing Temperature to Ubidots Cloud");
-  client.publish(topic, payload);
-  client.loop();
-  ///   Latitude
-  sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
-  sprintf(payload, "%s", ""); // Cleans the payload
-  sprintf(payload, "{\"%s\":", VARIABLE_LABEL_LAT); // Adds the variable label
-  sprintf(payload, "%s {\"value\": %s}}", payload, str_lat); // Adds the value
-  Serial.println("\nPublishing Temperature to Ubidots Cloud");
-  client.publish(topic, payload);
-  client.loop();*/
+
   ///   GPS
   sprintf(topic, "%s%s", "/v1.6/devices/", DEVICE_LABEL);
   sprintf(payload, "%s", ""); // Cleans the payload
@@ -195,7 +174,6 @@ void loop() {
   client.loop();
 
   delay(5000);
-
 
   Serial_2.flush();
   Serial.flush();
